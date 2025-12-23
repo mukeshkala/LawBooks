@@ -42,6 +42,7 @@ def run_docker_ocrmypdf(
     out_pdf: str,
     pages_range: Tuple[int, int],
     lang: str,
+    clean: bool = False,
     extra_args: Optional[Iterable[str]] = None,
     timeout_sec: Optional[int] = None,
     dry_run: bool = False,
@@ -67,7 +68,6 @@ def run_docker_ocrmypdf(
     args = [
         "--skip-text",
         "--deskew",
-        "--clean",
         "--optimize",
         "3",
         "--language",
@@ -75,6 +75,8 @@ def run_docker_ocrmypdf(
         "--pages",
         pages_spec,
     ]
+    if clean:
+        args.append("--clean")
     if extra_args:
         args.extend(extra_args)
 
@@ -116,6 +118,7 @@ def run_local_ocrmypdf(
     out_pdf: str,
     pages_range: Tuple[int, int],
     lang: str,
+    clean: bool = False,
     extra_args: Optional[Iterable[str]] = None,
     timeout_sec: Optional[int] = None,
     dry_run: bool = False,
@@ -131,7 +134,6 @@ def run_local_ocrmypdf(
     args = [
         "--skip-text",
         "--deskew",
-        "--clean",
         "--optimize",
         "3",
         "--language",
@@ -139,6 +141,8 @@ def run_local_ocrmypdf(
         "--pages",
         pages_spec,
     ]
+    if clean:
+        args.append("--clean")
     if extra_args:
         args.extend(extra_args)
 

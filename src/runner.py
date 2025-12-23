@@ -13,6 +13,20 @@ from typing import Iterable, Optional, Sequence, Tuple
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    "DockerNotFoundError",
+    "GhostscriptNotFoundError",
+    "OcrmypdfNotFoundError",
+    "TesseractNotFoundError",
+    "docker_available",
+    "ghostscript_available",
+    "local_ocrmypdf_ready",
+    "ocrmypdf_available",
+    "run_docker_ocrmypdf",
+    "run_local_ocrmypdf",
+    "tesseract_available",
+]
+
 
 class DockerNotFoundError(RuntimeError):
     pass

@@ -2,14 +2,23 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import shutil
 from pathlib import Path
 from typing import List
 
-from pypdf import PdfReader
-
 from .runner import run_docker_ocrmypdf
+
+
+def _require_pypdf() -> type:
+    if importlib.util.find_spec("pypdf") is None:
+        raise RuntimeError(
+            "Missing dependency 'pypdf'. Install with `pip install -r requirements.txt`."
+        )
+    from pypdf import PdfReader
+
+    return PdfReader
 
 
 def _load_status(status_path: Path) -> dict:
@@ -42,6 +51,7 @@ def ocr_pdf_in_chunks(
     if source_path != local_input:
         shutil.copy2(source_path, local_input)
 
+    PdfReader = _require_pypdf()
     reader = PdfReader(str(source_path))
     page_count = len(reader.pages)
 

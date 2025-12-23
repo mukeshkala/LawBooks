@@ -1,12 +1,8 @@
 """Command-line interface for LawBooks."""
 
-from __future__ import annotations
-
 import argparse
 import logging
 from pathlib import Path
-
-from pypdf import PdfReader
 
 from src import batch_folder
 from src.config import load_config
@@ -15,6 +11,8 @@ from src.ocr_chunks import ocr_pdf_in_chunks
 
 
 def _extract_text_one(pdf_path: Path, output_folder: Path) -> Path:
+    from pypdf import PdfReader
+
     output_text_dir = output_folder / "output_text"
     output_text_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_text_dir / f"{pdf_path.stem}.txt"

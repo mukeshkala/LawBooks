@@ -22,6 +22,10 @@ class OcrmypdfNotFoundError(RuntimeError):
     pass
 
 
+class TesseractNotFoundError(RuntimeError):
+    pass
+
+
 def _format_command_for_display(command: Iterable[str]) -> str:
     if os.name == "nt":
         return subprocess.list2cmdline(list(command))
@@ -34,6 +38,10 @@ def docker_available() -> bool:
 
 def ocrmypdf_available() -> bool:
     return shutil.which("ocrmypdf") is not None
+
+
+def tesseract_available() -> bool:
+    return shutil.which("tesseract") is not None
 
 
 def run_docker_ocrmypdf(
@@ -126,6 +134,10 @@ def run_local_ocrmypdf(
     if not ocrmypdf_available():
         raise OcrmypdfNotFoundError(
             "ocrmypdf not found. Install it locally or use the docker backend."
+        )
+    if not tesseract_available():
+        raise TesseractNotFoundError(
+            "tesseract not found. Install it locally or use the docker backend."
         )
 
     start_page, end_page = pages_range

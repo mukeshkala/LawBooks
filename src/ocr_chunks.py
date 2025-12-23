@@ -8,12 +8,17 @@ import shutil
 from pathlib import Path
 from typing import List
 
-from .runner import (
-    docker_available,
-    ocrmypdf_available,
-    run_docker_ocrmypdf,
-    run_local_ocrmypdf,
-)
+from . import runner
+
+
+def _local_ocr_ready() -> bool:
+    local_ready = getattr(runner, "local_ocrmypdf_ready", None)
+    if callable(local_ready):
+        return local_ready()
+    ocrmypdf_available = getattr(runner, "ocrmypdf_available", lambda: False)
+    tesseract_available = getattr(runner, "tesseract_available", lambda: False)
+    ghostscript_available = getattr(runner, "ghostscript_available", lambda: False)
+    return ocrmypdf_available() and tesseract_available() and ghostscript_available()
 
 
 def _require_pypdf() -> type:
@@ -72,13 +77,14 @@ def ocr_pdf_in_chunks(
         raise ValueError("backend must be one of: auto, docker, local")
 
     if backend == "auto":
-        if docker_available():
+        if runner.docker_available():
             resolved_backend = "docker"
-        elif ocrmypdf_available():
+        elif _local_ocr_ready():
             resolved_backend = "local"
         else:
             raise RuntimeError(
-                "Neither docker nor ocrmypdf is available. Install Docker or ocrmypdf."
+                "Neither docker nor a complete local OCR stack is available. "
+                "Install Docker or ensure ocrmypdf, tesseract, and ghostscript are on PATH."
             )
     else:
         resolved_backend = backend
@@ -105,7 +111,7 @@ def ocr_pdf_in_chunks(
 
         try:
             if resolved_backend == "docker":
-                run_docker_ocrmypdf(
+                runner.run_docker_ocrmypdf(
                     workdir=str(workdir_path),
                     in_pdf=str(local_input),
                     out_pdf=str(chunk_path),
@@ -117,7 +123,7 @@ def ocr_pdf_in_chunks(
                     dry_run=dry_run,
                 )
             else:
-                run_local_ocrmypdf(
+                runner.run_local_ocrmypdf(
                     in_pdf=str(local_input),
                     out_pdf=str(chunk_path),
                     pages_range=(start_page, end_page),

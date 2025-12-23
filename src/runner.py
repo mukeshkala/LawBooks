@@ -13,6 +13,20 @@ from typing import Iterable, Optional, Sequence, Tuple
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    "DockerNotFoundError",
+    "GhostscriptNotFoundError",
+    "OcrmypdfNotFoundError",
+    "TesseractNotFoundError",
+    "docker_available",
+    "ghostscript_available",
+    "local_ocrmypdf_ready",
+    "ocrmypdf_available",
+    "run_docker_ocrmypdf",
+    "run_local_ocrmypdf",
+    "tesseract_available",
+]
+
 
 class DockerNotFoundError(RuntimeError):
     pass
@@ -23,6 +37,10 @@ class OcrmypdfNotFoundError(RuntimeError):
 
 
 class TesseractNotFoundError(RuntimeError):
+    pass
+
+
+class GhostscriptNotFoundError(RuntimeError):
     pass
 
 
@@ -42,6 +60,29 @@ def ocrmypdf_available() -> bool:
 
 def tesseract_available() -> bool:
     return shutil.which("tesseract") is not None
+
+
+def ghostscript_available() -> bool:
+    if os.name == "nt":
+        return any(
+            shutil.which(cmd) is not None for cmd in ("gswin64c", "gswin32c", "gs")
+        )
+    return shutil.which("gs") is not None
+
+
+def local_ocrmypdf_ready() -> bool:
+    return ocrmypdf_available() and tesseract_available() and ghostscript_available()
+
+
+def _resolve_optimize_level(requested_level: int) -> int:
+    if requested_level in {2, 3} and shutil.which("pngquant") is None:
+        logger.warning(
+            "pngquant not found; falling back to optimize=1. "
+            "Install pngquant to enable optimize=%s.",
+            requested_level,
+        )
+        return 1
+    return requested_level
 
 
 def run_docker_ocrmypdf(
@@ -73,11 +114,12 @@ def run_docker_ocrmypdf(
     start_page, end_page = pages_range
     pages_spec = f"{start_page}-{end_page}"
 
+    optimize_level = _resolve_optimize_level(3)
     args = [
         "--skip-text",
         "--deskew",
         "--optimize",
-        "3",
+        str(optimize_level),
         "--language",
         lang,
         "--pages",
@@ -139,15 +181,20 @@ def run_local_ocrmypdf(
         raise TesseractNotFoundError(
             "tesseract not found. Install it locally or use the docker backend."
         )
+    if not ghostscript_available():
+        raise GhostscriptNotFoundError(
+            "ghostscript not found. Install it locally or use the docker backend."
+        )
 
     start_page, end_page = pages_range
     pages_spec = f"{start_page}-{end_page}"
 
+    optimize_level = _resolve_optimize_level(3)
     args = [
         "--skip-text",
         "--deskew",
         "--optimize",
-        "3",
+        str(optimize_level),
         "--language",
         lang,
         "--pages",

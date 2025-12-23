@@ -22,6 +22,10 @@ class OcrmypdfNotFoundError(RuntimeError):
     pass
 
 
+class TesseractNotFoundError(RuntimeError):
+    pass
+
+
 def _format_command_for_display(command: Iterable[str]) -> str:
     if os.name == "nt":
         return subprocess.list2cmdline(list(command))
@@ -36,12 +40,17 @@ def ocrmypdf_available() -> bool:
     return shutil.which("ocrmypdf") is not None
 
 
+def tesseract_available() -> bool:
+    return shutil.which("tesseract") is not None
+
+
 def run_docker_ocrmypdf(
     workdir: str,
     in_pdf: str,
     out_pdf: str,
     pages_range: Tuple[int, int],
     lang: str,
+    clean: bool = False,
     extra_args: Optional[Iterable[str]] = None,
     timeout_sec: Optional[int] = None,
     dry_run: bool = False,
@@ -67,7 +76,6 @@ def run_docker_ocrmypdf(
     args = [
         "--skip-text",
         "--deskew",
-        "--clean",
         "--optimize",
         "3",
         "--language",
@@ -75,6 +83,8 @@ def run_docker_ocrmypdf(
         "--pages",
         pages_spec,
     ]
+    if clean:
+        args.append("--clean")
     if extra_args:
         args.extend(extra_args)
 
@@ -116,6 +126,7 @@ def run_local_ocrmypdf(
     out_pdf: str,
     pages_range: Tuple[int, int],
     lang: str,
+    clean: bool = False,
     extra_args: Optional[Iterable[str]] = None,
     timeout_sec: Optional[int] = None,
     dry_run: bool = False,
@@ -124,6 +135,12 @@ def run_local_ocrmypdf(
         raise OcrmypdfNotFoundError(
             "ocrmypdf not found. Install it locally or use the docker backend."
         )
+    if not tesseract_available():
+        raise TesseractNotFoundError(
+            "tesseract not found. Install it (Windows: `choco install tesseract` or "
+            "`winget install --id UB-Mannheim.TesseractOCR -e`) or use the docker "
+            "backend."
+        )
 
     start_page, end_page = pages_range
     pages_spec = f"{start_page}-{end_page}"
@@ -131,7 +148,6 @@ def run_local_ocrmypdf(
     args = [
         "--skip-text",
         "--deskew",
-        "--clean",
         "--optimize",
         "3",
         "--language",
@@ -139,6 +155,8 @@ def run_local_ocrmypdf(
         "--pages",
         pages_spec,
     ]
+    if clean:
+        args.append("--clean")
     if extra_args:
         args.extend(extra_args)
 

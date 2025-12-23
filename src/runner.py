@@ -18,10 +18,22 @@ class DockerNotFoundError(RuntimeError):
     pass
 
 
+class OcrmypdfNotFoundError(RuntimeError):
+    pass
+
+
 def _format_command_for_display(command: Iterable[str]) -> str:
     if os.name == "nt":
         return subprocess.list2cmdline(list(command))
     return " ".join(shlex.quote(part) for part in command)
+
+
+def docker_available() -> bool:
+    return shutil.which("docker") is not None
+
+
+def ocrmypdf_available() -> bool:
+    return shutil.which("ocrmypdf") is not None
 
 
 def run_docker_ocrmypdf(
@@ -95,6 +107,63 @@ def run_docker_ocrmypdf(
         raise TimeoutError("OCRmyPDF timed out.") from exc
     except subprocess.CalledProcessError as exc:
         raise RuntimeError("OCRmyPDF failed. See docker output for details.") from exc
+
+    return display_command
+
+
+def run_local_ocrmypdf(
+    in_pdf: str,
+    out_pdf: str,
+    pages_range: Tuple[int, int],
+    lang: str,
+    extra_args: Optional[Iterable[str]] = None,
+    timeout_sec: Optional[int] = None,
+    dry_run: bool = False,
+) -> str:
+    if not ocrmypdf_available():
+        raise OcrmypdfNotFoundError(
+            "ocrmypdf not found. Install it locally or use the docker backend."
+        )
+
+    start_page, end_page = pages_range
+    pages_spec = f"{start_page}-{end_page}"
+
+    args = [
+        "--skip-text",
+        "--deskew",
+        "--clean",
+        "--optimize",
+        "3",
+        "--language",
+        lang,
+        "--pages",
+        pages_spec,
+    ]
+    if extra_args:
+        args.extend(extra_args)
+
+    command = [
+        "ocrmypdf",
+        *args,
+        str(in_pdf),
+        str(out_pdf),
+    ]
+
+    display_command = _format_command_for_display(command)
+    if dry_run:
+        print(f"DRY RUN: {display_command}")
+        return display_command
+
+    try:
+        subprocess.run(command, check=True, timeout=timeout_sec)
+    except FileNotFoundError as exc:
+        raise OcrmypdfNotFoundError(
+            "ocrmypdf not found. Install it locally or use the docker backend."
+        ) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise TimeoutError("ocrmypdf timed out.") from exc
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError("ocrmypdf failed. See output for details.") from exc
 
     return display_command
 

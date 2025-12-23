@@ -72,6 +72,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ocr_parser.add_argument("--lang", default="eng", help="OCR language")
     ocr_parser.add_argument(
+        "--ocr-backend",
+        choices=("auto", "docker", "local"),
+        default="auto",
+        help="OCR backend to use (default: auto)",
+    )
+    ocr_parser.add_argument(
         "--dry-run", action="store_true", help="Print docker commands without running"
     )
     ocr_parser.add_argument(
@@ -112,6 +118,7 @@ def main() -> int:
                 lang=args.lang,
                 dry_run=args.dry_run,
                 force=args.force,
+                backend=args.ocr_backend,
             )
         except RuntimeError as exc:
             logging.getLogger(__name__).error(str(exc))

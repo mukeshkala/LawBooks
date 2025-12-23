@@ -16,14 +16,14 @@ from .runner import (
 )
 
 
-def _require_pypdf() -> type:
+def _require_pypdf() -> tuple[type, type]:
     if importlib.util.find_spec("pypdf") is None:
         raise RuntimeError(
             "Missing dependency 'pypdf'. Install with `pip install -r requirements.txt`."
         )
-    from pypdf import PdfReader
+    from pypdf import PdfReader, PdfWriter
 
-    return PdfReader
+    return PdfReader, PdfWriter
 
 
 def _load_status(status_path: Path) -> dict:
@@ -58,8 +58,8 @@ def ocr_pdf_in_chunks(
     if source_path != local_input:
         shutil.copy2(source_path, local_input)
 
-    PdfReader = _require_pypdf()
-    reader = PdfReader(str(source_path))
+    PdfReader, PdfWriter = _require_pypdf()
+    reader = PdfReader(str(local_input))
     page_count = len(reader.pages)
 
     status_path = workdir_path / "status.json"
@@ -88,6 +88,7 @@ def ocr_pdf_in_chunks(
         end_page = min(start_page + chunk_size - 1, page_count)
         chunk_name = f"chunk_{start_page:04d}-{end_page:04d}.pdf"
         chunk_path = chunks_dir / chunk_name
+        chunk_input = chunks_dir / f"chunk_{start_page:04d}-{end_page:04d}_input.pdf"
         chunk_paths.append(chunk_path)
 
         record = chunk_records.get(
@@ -105,12 +106,19 @@ def ocr_pdf_in_chunks(
         _write_status(status_path, status_data)
 
         try:
+            if not dry_run and (force or not chunk_input.exists()):
+                writer = PdfWriter()
+                for page_index in range(start_page - 1, end_page):
+                    writer.add_page(reader.pages[page_index])
+                with chunk_input.open("wb") as handle:
+                    writer.write(handle)
+            chunk_pages = end_page - start_page + 1
             if resolved_backend == "docker":
                 run_docker_ocrmypdf(
                     workdir=str(workdir_path),
-                    in_pdf=str(local_input),
+                    in_pdf=str(chunk_input),
                     out_pdf=str(chunk_path),
-                    pages_range=(start_page, end_page),
+                    pages_range=(1, chunk_pages),
                     lang=lang,
                     clean=clean,
                     extra_args=None,
@@ -119,9 +127,9 @@ def ocr_pdf_in_chunks(
                 )
             else:
                 run_local_ocrmypdf(
-                    in_pdf=str(local_input),
+                    in_pdf=str(chunk_input),
                     out_pdf=str(chunk_path),
-                    pages_range=(start_page, end_page),
+                    pages_range=(1, chunk_pages),
                     lang=lang,
                     clean=clean,
                     extra_args=None,

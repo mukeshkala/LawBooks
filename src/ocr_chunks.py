@@ -8,17 +8,12 @@ import shutil
 from pathlib import Path
 from typing import List
 
-from . import runner
-
-
-def _local_ocr_ready() -> bool:
-    local_ready = getattr(runner, "local_ocrmypdf_ready", None)
-    if callable(local_ready):
-        return local_ready()
-    ocrmypdf_available = getattr(runner, "ocrmypdf_available", lambda: False)
-    tesseract_available = getattr(runner, "tesseract_available", lambda: False)
-    ghostscript_available = getattr(runner, "ghostscript_available", lambda: False)
-    return ocrmypdf_available() and tesseract_available() and ghostscript_available()
+from .runner import (
+    docker_available,
+    local_ocrmypdf_ready,
+    run_docker_ocrmypdf,
+    run_local_ocrmypdf,
+)
 
 
 def _require_pypdf() -> type:
@@ -79,7 +74,7 @@ def ocr_pdf_in_chunks(
     if backend == "auto":
         if runner.docker_available():
             resolved_backend = "docker"
-        elif _local_ocr_ready():
+        elif local_ocrmypdf_ready():
             resolved_backend = "local"
         else:
             raise RuntimeError(

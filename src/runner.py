@@ -1,9 +1,17 @@
+"""Subprocess helpers."""
+
+from __future__ import annotations
+
+import logging
 import os
 import shlex
 import shutil
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional, Sequence, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 class DockerNotFoundError(RuntimeError):
@@ -89,15 +97,6 @@ def run_docker_ocrmypdf(
         raise RuntimeError("OCRmyPDF failed. See docker output for details.") from exc
 
     return display_command
-"""Subprocess helpers (placeholder)."""
-
-from __future__ import annotations
-
-import logging
-from dataclasses import dataclass
-from typing import Sequence
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass

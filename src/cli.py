@@ -1,6 +1,7 @@
 """Command-line interface for LawBooks."""
 
 import argparse
+import importlib.util
 import logging
 from pathlib import Path
 
@@ -10,8 +11,18 @@ from src.log import configure_logging
 from src.ocr_chunks import ocr_pdf_in_chunks
 
 
-def _extract_text_one(pdf_path: Path, output_folder: Path) -> Path:
+def _require_pypdf() -> type:
+    if importlib.util.find_spec("pypdf") is None:
+        raise RuntimeError(
+            "Missing dependency 'pypdf'. Install with `pip install -r requirements.txt`."
+        )
     from pypdf import PdfReader
+
+    return PdfReader
+
+
+def _extract_text_one(pdf_path: Path, output_folder: Path) -> Path:
+    PdfReader = _require_pypdf()
 
     output_text_dir = output_folder / "output_text"
     output_text_dir.mkdir(parents=True, exist_ok=True)

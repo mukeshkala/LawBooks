@@ -72,7 +72,7 @@ def ocr_pdf_in_chunks(
         raise ValueError("backend must be one of: auto, docker, local")
 
     if backend == "auto":
-        if runner.docker_available():
+        if docker_available():
             resolved_backend = "docker"
         elif local_ocrmypdf_ready():
             resolved_backend = "local"
@@ -106,7 +106,7 @@ def ocr_pdf_in_chunks(
 
         try:
             if resolved_backend == "docker":
-                runner.run_docker_ocrmypdf(
+                run_docker_ocrmypdf(
                     workdir=str(workdir_path),
                     in_pdf=str(local_input),
                     out_pdf=str(chunk_path),
@@ -118,7 +118,7 @@ def ocr_pdf_in_chunks(
                     dry_run=dry_run,
                 )
             else:
-                runner.run_local_ocrmypdf(
+                run_local_ocrmypdf(
                     in_pdf=str(local_input),
                     out_pdf=str(chunk_path),
                     pages_range=(start_page, end_page),

@@ -62,6 +62,21 @@ def tesseract_available() -> bool:
     return shutil.which("tesseract") is not None
 
 
+def ghostscript_available() -> bool:
+    return any(
+        shutil.which(candidate) is not None
+        for candidate in ("gs", "gswin64c", "gswin32c")
+    )
+
+
+def local_ocrmypdf_ready() -> bool:
+    return (
+        ocrmypdf_available()
+        and tesseract_available()
+        and ghostscript_available()
+    )
+
+
 def _resolve_optimize_level(requested_level: int) -> int:
     if requested_level in {2, 3} and shutil.which("pngquant") is None:
         logger.warning(

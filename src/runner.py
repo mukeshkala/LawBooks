@@ -3,48 +3,25 @@ import shlex
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Iterable, Optional, Tuple
 
 
-class DockerNotFoundError(RuntimeError):
-    pass
+def _quote_windows_path(path_str: str) -> str:
+    if os.name != "nt":
+        return shlex.quote(path_str)
+    if path_str.startswith('"') and path_str.endswith('"'):
+        return path_str
+    return f'"{path_str}"'
 
 
-def _format_command_for_display(command: Iterable[str]) -> str:
-    if os.name == "nt":
-        return subprocess.list2cmdline(list(command))
-    return " ".join(shlex.quote(part) for part in command)
-
-
-def run_docker_ocrmypdf(
-    workdir: str,
-    in_pdf: str,
-    out_pdf: str,
-    pages_range: Tuple[int, int],
-    lang: str,
-    extra_args: Optional[Iterable[str]] = None,
-    timeout_sec: Optional[int] = None,
-    dry_run: bool = False,
-) -> str:
-    workdir_path = Path(workdir).resolve()
-    in_path = Path(in_pdf).resolve()
-    out_path = Path(out_pdf).resolve()
-
-    try:
-        rel_in = in_path.relative_to(workdir_path)
-        rel_out = out_path.relative_to(workdir_path)
-    except ValueError as exc:
-        raise ValueError("Input and output PDFs must be within the workdir.") from exc
-
-    if shutil.which("docker") is None:
-        raise DockerNotFoundError(
-            "Docker not found. Install Docker Desktop and ensure 'docker' is on PATH."
-        )
-
+def _build_docker_command(workdir: Path, in_pdf: Path, out_pdf: Path, pages_range, lang, extra_args):
     start_page, end_page = pages_range
-    pages_spec = f"{start_page}-{end_page}"
-
     args = [
+        "docker",
+        "run",
+        "--rm",
+        "-v",
+        f"{workdir}:/data",
+        "jbarlow83/ocrmypdf-alpine",
         "--skip-text",
         "--deskew",
         "--clean",
@@ -53,42 +30,58 @@ def run_docker_ocrmypdf(
         "--language",
         lang,
         "--pages",
-        pages_spec,
+        f"{start_page}-{end_page}",
     ]
     if extra_args:
         args.extend(extra_args)
+    args.extend([f"/data/{in_pdf.as_posix()}", f"/data/{out_pdf.as_posix()}"])
+    return args
 
-    volume_arg = f"{workdir_path}:/data"
 
-    command = [
-        "docker",
-        "run",
-        "--rm",
-        "-v",
-        volume_arg,
-        "jbarlow83/ocrmypdf-alpine",
-        *args,
-        f"/data/{rel_in.as_posix()}",
-        f"/data/{rel_out.as_posix()}",
-    ]
+def _command_for_display(args):
+    display = []
+    for arg in args:
+        if os.name == "nt" and (":" in arg or "\\" in arg or " " in arg):
+            display.append(_quote_windows_path(arg))
+        else:
+            display.append(shlex.quote(arg))
+    return " ".join(display)
 
-    display_command = _format_command_for_display(command)
+
+def run_docker_ocrmypdf(
+    workdir,
+    in_pdf,
+    out_pdf,
+    pages_range,
+    lang,
+    extra_args=None,
+    timeout_sec=1800,
+    dry_run=False,
+):
+    if shutil.which("docker") is None:
+        raise RuntimeError(
+            "Docker executable not found. Install Docker Desktop and ensure `docker` "
+            "is on your PATH."
+        )
+
+    workdir_path = Path(workdir).resolve()
+    rel_in = Path(in_pdf).resolve().relative_to(workdir_path)
+    rel_out = Path(out_pdf).resolve().relative_to(workdir_path)
+
+    args = _build_docker_command(workdir_path, rel_in, rel_out, pages_range, lang, extra_args)
+    display_command = _command_for_display(args)
     if dry_run:
-        print(f"DRY RUN: {display_command}")
+        print(display_command)
         return display_command
 
-    try:
-        subprocess.run(command, check=True, timeout=timeout_sec)
-    except FileNotFoundError as exc:
-        raise DockerNotFoundError(
-            "Docker not found. Install Docker Desktop and ensure 'docker' is on PATH."
-        ) from exc
-    except subprocess.TimeoutExpired as exc:
-        raise TimeoutError("OCRmyPDF timed out.") from exc
-    except subprocess.CalledProcessError as exc:
-        raise RuntimeError("OCRmyPDF failed. See docker output for details.") from exc
-
-    return display_command
+    result = subprocess.run(
+        args,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=timeout_sec,
+    )
+    return result.stdout
 """Subprocess helpers (placeholder)."""
 
 from __future__ import annotations

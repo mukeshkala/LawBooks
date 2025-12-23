@@ -1,32 +1,38 @@
+import json
 from pathlib import Path
-from typing import Iterable
 
 from pypdf import PdfReader, PdfWriter
 
 
-def merge_pdfs(chunk_paths: Iterable[Path], merged_path: Path) -> Path:
-    writer = PdfWriter()
-    expected_pages = 0
+def merge_pdfs(chunk_paths, merged_path):
+    if not chunk_paths:
+        raise ValueError("No chunk PDFs supplied for merging.")
 
+    merged_path = Path(merged_path)
+    merged_path.parent.mkdir(parents=True, exist_ok=True)
+
+    chunks_dir = Path(chunk_paths[0]).resolve().parent
+    workdir = chunks_dir.parent
+    status_path = workdir / "status.json"
+    if not status_path.exists():
+        raise FileNotFoundError(f"Missing status file: {status_path}")
+    status = json.loads(status_path.read_text(encoding="utf-8"))
+    expected_pages = status.get("page_count")
+
+    writer = PdfWriter()
     for chunk_path in chunk_paths:
         reader = PdfReader(str(chunk_path))
-        expected_pages += len(reader.pages)
         for page in reader.pages:
             writer.add_page(page)
 
-    merged_path.parent.mkdir(parents=True, exist_ok=True)
-    with merged_path.open("wb") as output_file:
-        writer.write(output_file)
-
-    merged_reader = PdfReader(str(merged_path))
-    merged_count = len(merged_reader.pages)
-
-    if merged_count != expected_pages:
+    actual_pages = len(writer.pages)
+    if expected_pages is not None and actual_pages != expected_pages:
         raise ValueError(
-            f"Merged PDF page count mismatch: expected {expected_pages}, got {merged_count}."
+            f"Merged PDF has {actual_pages} pages; expected {expected_pages}."
         )
 
-    return merged_path
+    with merged_path.open("wb") as output_file:
+        writer.write(output_file)
 """PDF helper operations."""
 
 from __future__ import annotations

@@ -1,3 +1,21 @@
+import argparse
+
+from src.batch_folder import ocr_one
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(description="OCR processing utilities.")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    ocr_one_parser = subparsers.add_parser("ocr-one", help="OCR a single PDF in chunks.")
+    ocr_one_parser.add_argument("--input", required=True, help="Path to the input PDF.")
+    ocr_one_parser.add_argument(
+        "--output-folder", required=True, help="Folder where output runs are created."
+    )
+    ocr_one_parser.add_argument("--chunk-size", type=int, default=25)
+    ocr_one_parser.add_argument("--lang", default="eng")
+    ocr_one_parser.add_argument("--dry-run", action="store_true", help="Print docker commands only.")
+    ocr_one_parser.add_argument("--force", action="store_true", help="Rebuild existing chunks.")
 """Command-line interface for LawBooks."""
 
 import argparse
@@ -7,7 +25,7 @@ from pathlib import Path
 from src import batch_folder
 from src.config import load_config
 from src.log import configure_logging
-from src.ocr_chunks import ocr_pdf_in_chunks
+from src.ocr_chunks import ocr_pdf
 
 
 def _extract_text_one(pdf_path: Path, output_folder: Path) -> Path:
@@ -42,30 +60,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     ocr_parser = subparsers.add_parser(
         "ocr-one",
-        help="OCR a single PDF.",
+        help="Placeholder OCR command.",
     )
-    ocr_parser.add_argument(
-        "--input",
-        "--pdf-path",
-        dest="pdf_path",
-        required=True,
-        help="Input PDF path",
-    )
-    ocr_parser.add_argument(
-        "--output-folder",
-        required=True,
-        help="Output folder for OCR runs",
-    )
-    ocr_parser.add_argument(
-        "--chunk-size", type=int, default=25, help="Pages per OCR chunk"
-    )
-    ocr_parser.add_argument("--lang", default="eng", help="OCR language")
-    ocr_parser.add_argument(
-        "--dry-run", action="store_true", help="Print docker commands without running"
-    )
-    ocr_parser.add_argument(
-        "--force", action="store_true", help="Re-run OCR even if chunk exists"
-    )
+    ocr_parser.add_argument("--pdf-path", required=True)
+    ocr_parser.add_argument("--output-folder", required=True)
 
     extract_parser = subparsers.add_parser(
         "extract-text-one",
@@ -77,6 +75,25 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def main():
+    parser = build_parser()
+    args = parser.parse_args()
+
+    if args.command == "ocr-one":
+        output_path = ocr_one(
+            args.input,
+            args.output_folder,
+            chunk_size=args.chunk_size,
+            lang=args.lang,
+            dry_run=args.dry_run,
+            force=args.force,
+        )
+        if not args.dry_run:
+            print(f"Searchable PDF written to {output_path}")
+
+
+if __name__ == "__main__":
+    main()
 def main() -> int:
     configure_logging()
     parser = build_parser()
@@ -93,14 +110,7 @@ def main() -> int:
         return 0
 
     if args.command == "ocr-one":
-        ocr_pdf_in_chunks(
-            input_pdf=args.pdf_path,
-            workdir=str(Path(args.output_folder)),
-            chunk_size=args.chunk_size,
-            lang=args.lang,
-            dry_run=args.dry_run,
-            force=args.force,
-        )
+        ocr_pdf(Path(args.pdf_path), Path(args.output_folder))
         return 0
 
     if args.command == "extract-text-one":

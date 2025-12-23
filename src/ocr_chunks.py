@@ -10,7 +10,7 @@ from typing import List
 
 from .runner import (
     docker_available,
-    ocrmypdf_available,
+    local_ocrmypdf_ready,
     run_docker_ocrmypdf,
     run_local_ocrmypdf,
 )
@@ -74,11 +74,12 @@ def ocr_pdf_in_chunks(
     if backend == "auto":
         if docker_available():
             resolved_backend = "docker"
-        elif ocrmypdf_available():
+        elif local_ocrmypdf_ready():
             resolved_backend = "local"
         else:
             raise RuntimeError(
-                "Neither docker nor ocrmypdf is available. Install Docker or ocrmypdf."
+                "Neither docker nor a complete local OCR stack is available. "
+                "Install Docker or ensure ocrmypdf, tesseract, and ghostscript are on PATH."
             )
     else:
         resolved_backend = backend

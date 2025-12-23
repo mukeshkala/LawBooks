@@ -26,6 +26,10 @@ class TesseractNotFoundError(RuntimeError):
     pass
 
 
+class GhostscriptNotFoundError(RuntimeError):
+    pass
+
+
 def _format_command_for_display(command: Iterable[str]) -> str:
     if os.name == "nt":
         return subprocess.list2cmdline(list(command))
@@ -150,6 +154,10 @@ def run_local_ocrmypdf(
     if not tesseract_available():
         raise TesseractNotFoundError(
             "tesseract not found. Install it locally or use the docker backend."
+        )
+    if not ghostscript_available():
+        raise GhostscriptNotFoundError(
+            "ghostscript not found. Install it locally or use the docker backend."
         )
 
     start_page, end_page = pages_range

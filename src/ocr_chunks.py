@@ -94,3 +94,16 @@ def ocr_pdf_in_chunks(input_pdf, workdir, chunk_size=25, lang="eng", dry_run=Fal
             _write_status(status_path, status)
 
     return chunk_paths
+"""OCR chunking placeholder."""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+
+def ocr_pdf(pdf_path: Path, output_folder: Path) -> None:
+    """Placeholder OCR implementation."""
+    logger.info("ocr_pdf placeholder: %s -> %s", pdf_path, output_folder)

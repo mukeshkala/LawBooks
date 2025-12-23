@@ -104,18 +104,28 @@ def main() -> int:
         return 0
 
     if args.command == "ocr-one":
-        ocr_pdf_in_chunks(
-            input_pdf=args.pdf_path,
-            workdir=str(Path(args.output_folder)),
-            chunk_size=args.chunk_size,
-            lang=args.lang,
-            dry_run=args.dry_run,
-            force=args.force,
-        )
+        try:
+            ocr_pdf_in_chunks(
+                input_pdf=args.pdf_path,
+                workdir=str(Path(args.output_folder)),
+                chunk_size=args.chunk_size,
+                lang=args.lang,
+                dry_run=args.dry_run,
+                force=args.force,
+            )
+        except RuntimeError as exc:
+            logging.getLogger(__name__).error(str(exc))
+            return 1
         return 0
 
     if args.command == "extract-text-one":
-        output_path = _extract_text_one(Path(args.pdf_path), Path(args.output_folder))
+        try:
+            output_path = _extract_text_one(
+                Path(args.pdf_path), Path(args.output_folder)
+            )
+        except RuntimeError as exc:
+            logging.getLogger(__name__).error(str(exc))
+            return 1
         logging.getLogger(__name__).info("Wrote text to %s", output_path)
         return 0
 

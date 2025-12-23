@@ -137,9 +137,7 @@ def run_local_ocrmypdf(
         )
     if not tesseract_available():
         raise TesseractNotFoundError(
-            "tesseract not found. Install it (Windows: `choco install tesseract` or "
-            "`winget install --id UB-Mannheim.TesseractOCR -e`) or use the docker "
-            "backend."
+            "tesseract not found. Install it locally or use the docker backend."
         )
 
     start_page, end_page = pages_range

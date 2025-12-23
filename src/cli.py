@@ -72,6 +72,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ocr_parser.add_argument("--lang", default="eng", help="OCR language")
     ocr_parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="Enable OCRmyPDF cleaning (requires unpaper).",
+    )
+    ocr_parser.add_argument(
         "--ocr-backend",
         choices=("auto", "docker", "local"),
         default="auto",
@@ -116,6 +121,7 @@ def main() -> int:
                 workdir=str(Path(args.output_folder)),
                 chunk_size=args.chunk_size,
                 lang=args.lang,
+                clean=args.clean,
                 dry_run=args.dry_run,
                 force=args.force,
                 backend=args.ocr_backend,

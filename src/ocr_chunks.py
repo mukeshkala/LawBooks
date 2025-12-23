@@ -99,7 +99,7 @@ def ocr_pdf_in_chunks(
             record["status"] = "skipped"
             chunk_records[chunk_name] = record
             _write_status(status_path, status_data)
-            if not dry_run and chunk_input.exists():
+            if chunk_input.exists():
                 chunk_input.unlink()
             continue
 
@@ -140,14 +140,15 @@ def ocr_pdf_in_chunks(
                 )
             record["status"] = "dry_run" if dry_run else "completed"
             record["last_error"] = None
-            if clean and not dry_run and chunk_input.exists():
-                chunk_input.unlink()
         except Exception as exc:
             record["status"] = "failed"
             record["last_error"] = str(exc)
             chunk_records[chunk_name] = record
             _write_status(status_path, status_data)
             raise
+        finally:
+            if chunk_input.exists():
+                chunk_input.unlink()
 
         chunk_records[chunk_name] = record
         _write_status(status_path, status_data)

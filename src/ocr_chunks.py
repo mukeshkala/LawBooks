@@ -8,7 +8,12 @@ import shutil
 from pathlib import Path
 from typing import List
 
-from .runner import run_docker_ocrmypdf
+from .runner import (
+    docker_available,
+    ocrmypdf_available,
+    run_docker_ocrmypdf,
+    run_local_ocrmypdf,
+)
 
 
 def _require_pypdf() -> type:
@@ -40,6 +45,7 @@ def ocr_pdf_in_chunks(
     lang: str = "eng",
     dry_run: bool = False,
     force: bool = False,
+    backend: str = "auto",
 ) -> List[Path]:
     workdir_path = Path(workdir)
     workdir_path.mkdir(parents=True, exist_ok=True)
@@ -60,6 +66,21 @@ def ocr_pdf_in_chunks(
     chunk_records = status_data.setdefault("chunks", {})
 
     chunk_paths: List[Path] = []
+
+    if backend not in {"auto", "docker", "local"}:
+        raise ValueError("backend must be one of: auto, docker, local")
+
+    if backend == "auto":
+        if docker_available():
+            resolved_backend = "docker"
+        elif ocrmypdf_available():
+            resolved_backend = "local"
+        else:
+            raise RuntimeError(
+                "Neither docker nor ocrmypdf is available. Install Docker or ocrmypdf."
+            )
+    else:
+        resolved_backend = backend
 
     for start_page in range(1, page_count + 1, chunk_size):
         end_page = min(start_page + chunk_size - 1, page_count)
@@ -82,16 +103,27 @@ def ocr_pdf_in_chunks(
         _write_status(status_path, status_data)
 
         try:
-            run_docker_ocrmypdf(
-                workdir=str(workdir_path),
-                in_pdf=str(local_input),
-                out_pdf=str(chunk_path),
-                pages_range=(start_page, end_page),
-                lang=lang,
-                extra_args=None,
-                timeout_sec=None,
-                dry_run=dry_run,
-            )
+            if resolved_backend == "docker":
+                run_docker_ocrmypdf(
+                    workdir=str(workdir_path),
+                    in_pdf=str(local_input),
+                    out_pdf=str(chunk_path),
+                    pages_range=(start_page, end_page),
+                    lang=lang,
+                    extra_args=None,
+                    timeout_sec=None,
+                    dry_run=dry_run,
+                )
+            else:
+                run_local_ocrmypdf(
+                    in_pdf=str(local_input),
+                    out_pdf=str(chunk_path),
+                    pages_range=(start_page, end_page),
+                    lang=lang,
+                    extra_args=None,
+                    timeout_sec=None,
+                    dry_run=dry_run,
+                )
             record["status"] = "dry_run" if dry_run else "completed"
             record["last_error"] = None
         except Exception as exc:
